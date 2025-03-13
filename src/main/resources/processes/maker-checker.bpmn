@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_08lm6za"
+                  targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.32.0"
+                  modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+    <bpmn:process id="maker-checker" isExecutable="true" camunda:historyTimeToLive="30">
+        <bpmn:startEvent id="StartEvent_1">
+            <bpmn:outgoing>Flow_1geqosh</bpmn:outgoing>
+        </bpmn:startEvent>
+        <bpmn:sequenceFlow id="Flow_1geqosh" name="Start" sourceRef="StartEvent_1" targetRef="Activity_1msda1a" />
+        <bpmn:sequenceFlow id="Flow_13skpye" name="SendToChecker" sourceRef="Activity_1msda1a" targetRef="Activity_1igu14l" />
+        <bpmn:exclusiveGateway id="Gateway_19dkk53">
+            <bpmn:incoming>Flow_1qgbs9w</bpmn:incoming>
+            <bpmn:outgoing>Flow_1eed557</bpmn:outgoing> <!-- Approve -->
+            <bpmn:outgoing>Flow_11isc58</bpmn:outgoing> <!-- Rework -->
+            <bpmn:outgoing>Flow_1cvufo3</bpmn:outgoing> <!-- Reject -->
+        </bpmn:exclusiveGateway>
+        <bpmn:sequenceFlow id="Flow_1qgbs9w" name="Descision" sourceRef="Activity_1igu14l" targetRef="Gateway_19dkk53" />
+        <bpmn:endEvent id="Event_0rhmbh8">
+            <bpmn:incoming>Flow_1eed557</bpmn:incoming>
+            <bpmn:incoming>Flow_1cvufo3</bpmn:incoming>
+        </bpmn:endEvent>
+        <bpmn:sequenceFlow id="Flow_1eed557" name="Approve" sourceRef="Gateway_19dkk53" targetRef="Event_0rhmbh8">
+            <bpmn:conditionExpression camunda:type="bpmn2:tFormalExpression">${decision == 'approve'}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+        <bpmn:sequenceFlow id="Flow_11isc58" name="Rework" sourceRef="Gateway_19dkk53" targetRef="Activity_1msda1a">
+            <bpmn:conditionExpression camunda:type="bpmn2:tFormalExpression">${decision == 'rework'}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+        <bpmn:sequenceFlow id="Flow_1cvufo3" name="Reject" sourceRef="Gateway_19dkk53" targetRef="Event_0rhmbh8" camunda:default="true"/>
+        <bpmn:userTask id="Activity_1msda1a" name="Maker">
+            <bpmn:incoming>Flow_1geqosh</bpmn:incoming>
+            <bpmn:incoming>Flow_11isc58</bpmn:incoming>
+            <bpmn:outgoing>Flow_13skpye</bpmn:outgoing>
+        </bpmn:userTask>
+        <bpmn:task id="Activity_1igu14l" name="Checker">
+            <bpmn:incoming>Flow_13skpye</bpmn:incoming>
+            <bpmn:outgoing>Flow_1qgbs9w</bpmn:outgoing>
+        </bpmn:task>
+    </bpmn:process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1icdmfo">
+            <bpmndi:BPMNShape id="Activity_1igu14l_di" bpmnElement="Activity_1igu14l">
+                <dc:Bounds x="610" y="150" width="100" height="80" />
+                <bpmndi:BPMNLabel />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Gateway_19dkk53_di" bpmnElement="Gateway_19dkk53" isMarkerVisible="true">
+                <dc:Bounds x="865" y="165" width="50" height="50" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+                <dc:Bounds x="182" y="172" width="36" height="36" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_0rhmbh8_di" bpmnElement="Event_0rhmbh8">
+                <dc:Bounds x="1072" y="172" width="36" height="36" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Activity_1g3vj6x_di" bpmnElement="Activity_1msda1a">
+                <dc:Bounds x="360" y="150" width="100" height="80" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="Flow_1geqosh_di" bpmnElement="Flow_1geqosh">
+                <di:waypoint x="218" y="190" />
+                <di:waypoint x="360" y="190" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="277" y="172" width="24" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_13skpye_di" bpmnElement="Flow_13skpye">
+                <di:waypoint x="460" y="190" />
+                <di:waypoint x="610" y="190" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="496" y="172" width="79" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_1qgbs9w_di" bpmnElement="Flow_1qgbs9w">
+                <di:waypoint x="710" y="190" />
+                <di:waypoint x="865" y="190" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="764" y="172" width="48" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_1eed557_di" bpmnElement="Flow_1eed557">
+                <di:waypoint x="915" y="190" />
+                <di:waypoint x="1072" y="190" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="973" y="172" width="41" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_11isc58_di" bpmnElement="Flow_11isc58">
+                <di:waypoint x="890" y="215" />
+                <di:waypoint x="890" y="390" />
+                <di:waypoint x="410" y="390" />
+                <di:waypoint x="410" y="230" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="631" y="372" width="38" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_1cvufo3_di" bpmnElement="Flow_1cvufo3">
+                <di:waypoint x="890" y="165" />
+                <di:waypoint x="890" y="60" />
+                <di:waypoint x="1090" y="60" />
+                <di:waypoint x="1090" y="172" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="974" y="42" width="32" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</bpmn:definitions>
