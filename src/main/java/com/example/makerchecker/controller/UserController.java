@@ -37,14 +37,18 @@ public class UserController {
             return ResponseEntity.badRequest().body("User already exists.");
         }
 
-        User newUser = identityService.newUser(userId);
-        newUser.setFirstName(firstName);
-        newUser.setLastName(lastName);
-        newUser.setEmail(email);
-        newUser.setPassword(password);
-        identityService.saveUser(newUser);
+        try {
+            User newUser = identityService.newUser(userId);
+            newUser.setFirstName(firstName);
+            newUser.setLastName(lastName);
+            newUser.setEmail(email);
+            newUser.setPassword(password);
+            identityService.saveUser(newUser);
 
-        return ResponseEntity.ok("User created successfully.");
+            return ResponseEntity.ok("User created successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error creating user: " + e.getMessage());
+        }
     }
 
     // Create a group
@@ -57,12 +61,16 @@ public class UserController {
             return ResponseEntity.badRequest().body("Group already exists.");
         }
 
-        Group group = identityService.newGroup(groupId);
-        group.setName(groupName);
-        group.setType("WORKFLOW");
-        identityService.saveGroup(group);
+        try {
+            Group group = identityService.newGroup(groupId);
+            group.setName(groupName);
+            group.setType("WORKFLOW");
+            identityService.saveGroup(group);
 
-        return ResponseEntity.ok("Group created successfully.");
+            return ResponseEntity.ok("Group created successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error creating group: " + e.getMessage());
+        }
     }
 
     // Assign user to group
@@ -71,17 +79,20 @@ public class UserController {
         String userId = assignData.get("userId");
         String groupId = assignData.get("groupId");
 
-        if (identityService.createUserQuery().userId(userId).singleResult() == null) {
-            return ResponseEntity.badRequest().body("User does not exist.");
+        try {
+            if (identityService.createUserQuery().userId(userId).singleResult() == null) {
+                return ResponseEntity.badRequest().body("User does not exist.");
+            }
+
+            if (identityService.createGroupQuery().groupId(groupId).singleResult() == null) {
+                return ResponseEntity.badRequest().body("Group does not exist.");
+            }
+
+            identityService.createMembership(userId, groupId);
+            return ResponseEntity.ok("User assigned to group successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error assigning user to group: " + e.getMessage());
         }
-
-        if (identityService.createGroupQuery().groupId(groupId).singleResult() == null) {
-            return ResponseEntity.badRequest().body("Group does not exist.");
-        }
-
-        identityService.createMembership(userId, groupId);
-
-        return ResponseEntity.ok("User assigned to group successfully.");
     }
 
     // Assign permissions for Maker and Checker roles
@@ -90,40 +101,56 @@ public class UserController {
         String userId = requestData.get("userId");
         String groupId = requestData.get("groupId");
 
-        // Check if user exists
-        if (identityService.createUserQuery().userId(userId).singleResult() == null) {
-            return ResponseEntity.badRequest().body("User does not exist.");
+        try {
+            // Check if user exists
+            if (identityService.createUserQuery().userId(userId).singleResult() == null) {
+                return ResponseEntity.badRequest().body("User does not exist.");
+            }
+
+            // Check if group exists
+            if (identityService.createGroupQuery().groupId(groupId).singleResult() == null) {
+                return ResponseEntity.badRequest().body("Group does not exist.");
+            }
+
+            // Create membership
+            identityService.createMembership(userId, groupId);
+
+            // Assign permissions
+            if (groupId.equals("makers")) {
+                grantPermission(groupId, Permissions.CREATE_INSTANCE, Resources.PROCESS_DEFINITION, "maker-checker");
+                grantPermission(groupId, Permissions.TASK_WORK, Resources.TASK, "*");
+            } else if (groupId.equals("checkers")) {
+                grantPermission(groupId, Permissions.TASK_WORK, Resources.TASK, "*");
+                grantPermission(groupId, Permissions.UPDATE, Resources.TASK, "*");
+            }
+
+            return ResponseEntity.ok("Permissions assigned successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error assigning permissions: " + e.getMessage());
         }
-
-        // Check if group exists
-        if (identityService.createGroupQuery().groupId(groupId).singleResult() == null) {
-            return ResponseEntity.badRequest().body("Group does not exist.");
-        }
-
-        // Create membership
-        identityService.createMembership(userId, groupId);
-
-        // Assign permissions
-        if (groupId.equals("makers")) {
-            grantPermission(groupId, Permissions.CREATE_INSTANCE, Resources.PROCESS_DEFINITION, "maker-checker");
-            grantPermission(groupId, Permissions.TASK_WORK, Resources.TASK, "*");
-        } else if (groupId.equals("checkers")) {
-            grantPermission(groupId, Permissions.TASK_WORK, Resources.TASK, "*");
-            grantPermission(groupId, Permissions.UPDATE, Resources.TASK, "*");
-        }
-
-        return ResponseEntity.ok("Permissions assigned successfully.");
     }
 
     // Helper method to grant permissions
     private void grantPermission(String groupId, Permission permission, Resources resource, String resourceId) {
-        Authorization authorization = authorizationService.createNewAuthorization(Authorization.AUTH_TYPE_GRANT);
-        authorization.setGroupId(groupId);
-        authorization.setPermissions(new Permission[]{permission});
-        authorization.setResource(resource);
-        authorization.setResourceId(resourceId);
-        authorizationService.saveAuthorization(authorization);
+        try {
+            // Check if authorization already exists
+            long existingAuth = authorizationService.createAuthorizationQuery()
+                    .groupIdIn(groupId)
+                    .resourceType(resource)
+                    .resourceId(resourceId)
+                    .count();
+
+            if (existingAuth == 0) {
+                Authorization authorization = authorizationService.createNewAuthorization(Authorization.AUTH_TYPE_GRANT);
+                authorization.setGroupId(groupId);
+                authorization.setPermissions(new Permission[]{permission});
+                authorization.setResource(resource);
+                authorization.setResourceId(resourceId);
+                authorizationService.saveAuthorization(authorization);
+            }
+        } catch (Exception e) {
+            // Log and continue
+            System.err.println("Could not grant permission: " + e.getMessage());
+        }
     }
-
 }
-

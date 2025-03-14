@@ -3,106 +3,199 @@
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                   xmlns:modeler="http://camunda.org/schema/modeler/1.0"
-                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_08lm6za"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_08lm6za"
                   targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.32.0"
                   modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
-    <bpmn:process id="maker-checker" isExecutable="true" camunda:historyTimeToLive="30">
-        <bpmn:startEvent id="StartEvent_1">
+    <bpmn:process id="maker-checker" name="Maker Checker Process" isExecutable="true" camunda:historyTimeToLive="30">
+        <bpmn:startEvent id="StartEvent_1" name="Request Submitted">
             <bpmn:outgoing>Flow_1geqosh</bpmn:outgoing>
         </bpmn:startEvent>
-        <bpmn:sequenceFlow id="Flow_1geqosh" name="Start" sourceRef="StartEvent_1" targetRef="Activity_1msda1a" />
-        <bpmn:sequenceFlow id="Flow_13skpye" name="SendToChecker" sourceRef="Activity_1msda1a" targetRef="Activity_1igu14l" />
-        <bpmn:exclusiveGateway id="Gateway_19dkk53">
-            <bpmn:incoming>Flow_1qgbs9w</bpmn:incoming>
-            <bpmn:outgoing>Flow_1eed557</bpmn:outgoing> <!-- Approve -->
-            <bpmn:outgoing>Flow_11isc58</bpmn:outgoing> <!-- Rework -->
-            <bpmn:outgoing>Flow_1cvufo3</bpmn:outgoing> <!-- Reject -->
-        </bpmn:exclusiveGateway>
-        <bpmn:sequenceFlow id="Flow_1qgbs9w" name="Descision" sourceRef="Activity_1igu14l" targetRef="Gateway_19dkk53" />
-        <bpmn:endEvent id="Event_0rhmbh8">
-            <bpmn:incoming>Flow_1eed557</bpmn:incoming>
-            <bpmn:incoming>Flow_1cvufo3</bpmn:incoming>
-        </bpmn:endEvent>
-        <bpmn:sequenceFlow id="Flow_1eed557" name="Approve" sourceRef="Gateway_19dkk53" targetRef="Event_0rhmbh8">
-            <bpmn:conditionExpression camunda:type="bpmn2:tFormalExpression">${decision == 'approve'}</bpmn:conditionExpression>
-        </bpmn:sequenceFlow>
-        <bpmn:sequenceFlow id="Flow_11isc58" name="Rework" sourceRef="Gateway_19dkk53" targetRef="Activity_1msda1a">
-            <bpmn:conditionExpression camunda:type="bpmn2:tFormalExpression">${decision == 'rework'}</bpmn:conditionExpression>
-        </bpmn:sequenceFlow>
-        <bpmn:sequenceFlow id="Flow_1cvufo3" name="Reject" sourceRef="Gateway_19dkk53" targetRef="Event_0rhmbh8" camunda:default="true"/>
-        <bpmn:userTask id="Activity_1msda1a" name="Maker">
+        <bpmn:sequenceFlow id="Flow_1geqosh" name="Start" sourceRef="StartEvent_1" targetRef="Activity_ValidateRequest" />
+
+        <bpmn:serviceTask id="Activity_ValidateRequest" name="Validate Request" camunda:delegateExpression="${validateRequestDelegate}">
             <bpmn:incoming>Flow_1geqosh</bpmn:incoming>
+            <bpmn:outgoing>Flow_ToMakerTask</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:sequenceFlow id="Flow_ToMakerTask" sourceRef="Activity_ValidateRequest" targetRef="Activity_MakerTask" />
+
+        <bpmn:userTask id="Activity_MakerTask" name="Maker Task" camunda:candidateGroups="makers">
+            <bpmn:incoming>Flow_ToMakerTask</bpmn:incoming>
             <bpmn:incoming>Flow_11isc58</bpmn:incoming>
             <bpmn:outgoing>Flow_13skpye</bpmn:outgoing>
         </bpmn:userTask>
-        <bpmn:task id="Activity_1igu14l" name="Checker">
+
+        <bpmn:sequenceFlow id="Flow_13skpye" name="SendToChecker" sourceRef="Activity_MakerTask" targetRef="Activity_CheckerTask" />
+
+        <bpmn:userTask id="Activity_CheckerTask" name="Checker Task" camunda:candidateGroups="checkers">
+            <bpmn:documentation>Review the request submitted by the maker</bpmn:documentation>
             <bpmn:incoming>Flow_13skpye</bpmn:incoming>
             <bpmn:outgoing>Flow_1qgbs9w</bpmn:outgoing>
-        </bpmn:task>
+        </bpmn:userTask>
+
+        <bpmn:sequenceFlow id="Flow_1qgbs9w" name="Decision" sourceRef="Activity_CheckerTask" targetRef="Gateway_19dkk53" />
+
+        <bpmn:exclusiveGateway id="Gateway_19dkk53" name="Review Decision">
+            <bpmn:incoming>Flow_1qgbs9w</bpmn:incoming>
+            <bpmn:outgoing>Flow_1eed557</bpmn:outgoing>
+            <bpmn:outgoing>Flow_11isc58</bpmn:outgoing>
+            <bpmn:outgoing>Flow_1cvufo3</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+
+        <bpmn:sequenceFlow id="Flow_1eed557" name="Approve" sourceRef="Gateway_19dkk53" targetRef="Activity_ProcessApproved">
+            <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decision == 'approve'}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+
+        <bpmn:serviceTask id="Activity_ProcessApproved" name="Process Approved Request" camunda:delegateExpression="${processApprovedRequestDelegate}">
+            <bpmn:incoming>Flow_1eed557</bpmn:incoming>
+            <bpmn:outgoing>Flow_ToApprovedEnd</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:sequenceFlow id="Flow_ToApprovedEnd" sourceRef="Activity_ProcessApproved" targetRef="Event_RequestApproved" />
+
+        <bpmn:endEvent id="Event_RequestApproved" name="Request Approved">
+            <bpmn:incoming>Flow_ToApprovedEnd</bpmn:incoming>
+        </bpmn:endEvent>
+
+        <bpmn:sequenceFlow id="Flow_11isc58" name="Rework" sourceRef="Gateway_19dkk53" targetRef="Activity_MakerTask">
+            <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decision == 'rework'}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+
+        <bpmn:sequenceFlow id="Flow_1cvufo3" name="Reject" sourceRef="Gateway_19dkk53" targetRef="Activity_HandleRejected">
+            <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decision == 'reject'}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+
+        <bpmn:serviceTask id="Activity_HandleRejected" name="Handle Rejected Request" camunda:delegateExpression="${handleRejectionRequestDelegate}">
+            <bpmn:incoming>Flow_1cvufo3</bpmn:incoming>
+            <bpmn:outgoing>Flow_ToRejectedEnd</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:sequenceFlow id="Flow_ToRejectedEnd" sourceRef="Activity_HandleRejected" targetRef="Event_RequestRejected" />
+
+        <bpmn:endEvent id="Event_RequestRejected" name="Request Rejected">
+            <bpmn:incoming>Flow_ToRejectedEnd</bpmn:incoming>
+        </bpmn:endEvent>
     </bpmn:process>
     <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1icdmfo">
-            <bpmndi:BPMNShape id="Activity_1igu14l_di" bpmnElement="Activity_1igu14l">
-                <dc:Bounds x="610" y="150" width="100" height="80" />
-                <bpmndi:BPMNLabel />
-            </bpmndi:BPMNShape>
-            <bpmndi:BPMNShape id="Gateway_19dkk53_di" bpmnElement="Gateway_19dkk53" isMarkerVisible="true">
-                <dc:Bounds x="865" y="165" width="50" height="50" />
-            </bpmndi:BPMNShape>
+        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="maker-checker">
             <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
                 <dc:Bounds x="182" y="172" width="36" height="36" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="156" y="215" width="90" height="14" />
+                </bpmndi:BPMNLabel>
             </bpmndi:BPMNShape>
-            <bpmndi:BPMNShape id="Event_0rhmbh8_di" bpmnElement="Event_0rhmbh8">
-                <dc:Bounds x="1072" y="172" width="36" height="36" />
+
+            <bpmndi:BPMNShape id="Activity_ValidateRequest_di" bpmnElement="Activity_ValidateRequest">
+                <dc:Bounds x="270" y="150" width="100" height="80" />
+                <bpmndi:BPMNLabel />
             </bpmndi:BPMNShape>
-            <bpmndi:BPMNShape id="Activity_1g3vj6x_di" bpmnElement="Activity_1msda1a">
-                <dc:Bounds x="360" y="150" width="100" height="80" />
+
+            <bpmndi:BPMNShape id="Activity_MakerTask_di" bpmnElement="Activity_MakerTask">
+                <dc:Bounds x="430" y="150" width="100" height="80" />
+                <bpmndi:BPMNLabel />
             </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Activity_CheckerTask_di" bpmnElement="Activity_CheckerTask">
+                <dc:Bounds x="590" y="150" width="100" height="80" />
+                <bpmndi:BPMNLabel />
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Gateway_19dkk53_di" bpmnElement="Gateway_19dkk53" isMarkerVisible="true">
+                <dc:Bounds x="745" y="165" width="50" height="50" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="735" y="135" width="71" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Activity_ProcessApproved_di" bpmnElement="Activity_ProcessApproved">
+                <dc:Bounds x="850" y="80" width="100" height="80" />
+                <bpmndi:BPMNLabel />
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Event_RequestApproved_di" bpmnElement="Event_RequestApproved">
+                <dc:Bounds x="1012" y="102" width="36" height="36" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="991" y="145" width="78" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Activity_HandleRejected_di" bpmnElement="Activity_HandleRejected">
+                <dc:Bounds x="850" y="230" width="100" height="80" />
+                <bpmndi:BPMNLabel />
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="Event_RequestRejected_di" bpmnElement="Event_RequestRejected">
+                <dc:Bounds x="1012" y="252" width="36" height="36" />
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="990" y="295" width="80" height="14" />
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
             <bpmndi:BPMNEdge id="Flow_1geqosh_di" bpmnElement="Flow_1geqosh">
                 <di:waypoint x="218" y="190" />
-                <di:waypoint x="360" y="190" />
+                <di:waypoint x="270" y="190" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="277" y="172" width="24" height="14" />
+                    <dc:Bounds x="233" y="172" width="24" height="14" />
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_ToMakerTask_di" bpmnElement="Flow_ToMakerTask">
+                <di:waypoint x="370" y="190" />
+                <di:waypoint x="430" y="190" />
+            </bpmndi:BPMNEdge>
+
             <bpmndi:BPMNEdge id="Flow_13skpye_di" bpmnElement="Flow_13skpye">
-                <di:waypoint x="460" y="190" />
-                <di:waypoint x="610" y="190" />
+                <di:waypoint x="530" y="190" />
+                <di:waypoint x="590" y="190" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="496" y="172" width="79" height="14" />
+                    <dc:Bounds x="525" y="172" width="79" height="14" />
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
+
             <bpmndi:BPMNEdge id="Flow_1qgbs9w_di" bpmnElement="Flow_1qgbs9w">
-                <di:waypoint x="710" y="190" />
-                <di:waypoint x="865" y="190" />
+                <di:waypoint x="690" y="190" />
+                <di:waypoint x="745" y="190" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="764" y="172" width="48" height="14" />
+                    <dc:Bounds x="701" y="172" width="40" height="14" />
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
+
             <bpmndi:BPMNEdge id="Flow_1eed557_di" bpmnElement="Flow_1eed557">
-                <di:waypoint x="915" y="190" />
-                <di:waypoint x="1072" y="190" />
+                <di:waypoint x="770" y="165" />
+                <di:waypoint x="770" y="120" />
+                <di:waypoint x="850" y="120" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="973" y="172" width="41" height="14" />
+                    <dc:Bounds x="790" y="102" width="41" height="14" />
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_ToApprovedEnd_di" bpmnElement="Flow_ToApprovedEnd">
+                <di:waypoint x="950" y="120" />
+                <di:waypoint x="1012" y="120" />
+            </bpmndi:BPMNEdge>
+
             <bpmndi:BPMNEdge id="Flow_11isc58_di" bpmnElement="Flow_11isc58">
-                <di:waypoint x="890" y="215" />
-                <di:waypoint x="890" y="390" />
-                <di:waypoint x="410" y="390" />
-                <di:waypoint x="410" y="230" />
+                <di:waypoint x="745" y="190" />
+                <di:waypoint x="480" y="320" />
+                <di:waypoint x="480" y="230" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="631" y="372" width="38" height="14" />
+                    <dc:Bounds x="600" y="302" width="38" height="14" />
                 </bpmndi:BPMNLabel>
             </bpmndi:BPMNEdge>
+
             <bpmndi:BPMNEdge id="Flow_1cvufo3_di" bpmnElement="Flow_1cvufo3">
-                <di:waypoint x="890" y="165" />
-                <di:waypoint x="890" y="60" />
-                <di:waypoint x="1090" y="60" />
-                <di:waypoint x="1090" y="172" />
+                <di:waypoint x="770" y="215" />
+                <di:waypoint x="770" y="270" />
+                <di:waypoint x="850" y="270" />
                 <bpmndi:BPMNLabel>
-                    <dc:Bounds x="974" y="42" width="32" height="14" />
+                    <dc:Bounds x="790" y="252" width="32" height="14" />
                 </bpmndi:BPMNLabel>
+            </bpmndi:BPMNEdge>
+
+            <bpmndi:BPMNEdge id="Flow_ToRejectedEnd_di" bpmnElement="Flow_ToRejectedEnd">
+                <di:waypoint x="950" y="270" />
+                <di:waypoint x="1012" y="270" />
             </bpmndi:BPMNEdge>
         </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

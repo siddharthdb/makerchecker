@@ -4,6 +4,7 @@ import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 @Configuration
 public class CamundaConfig {
@@ -15,11 +16,12 @@ public class CamundaConfig {
     }
 
     @Bean
+    @Order(90) // Ensure this runs before the ApplicationInitializer
     public Deployment deployProcesses() {
         return repositoryService.createDeployment()
-                .addClasspathResource("processes/maker-checker.bpmn") // Path to your BPMN file
+                .addClasspathResource("processes/maker-checker.bpmn")
                 .name("maker-checker-deployment")
-                .enableDuplicateFiltering(true) // Avoid re-deploying unchanged files
+                .enableDuplicateFiltering(true)
                 .deploy();
     }
 }
